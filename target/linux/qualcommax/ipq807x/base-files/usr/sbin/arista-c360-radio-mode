@@ -137,7 +137,7 @@ normalize_radios()
 {
 	local radio path band stale
 	ensure_wireless_generated
-	for stale in apc360_tmp_5g apc360_tmp_24g apc360_tmp_service apc360_tmp_scan; do
+	for stale in apc360_tmp_5g apc360_tmp_24g apc360_tmp_service; do
 		uci -q delete wireless.$stale
 	done
 	for radio in $(uci -q show wireless | sed -n 's/^wireless\.\([^=]*\)=wifi-device$/\1/p'); do
@@ -147,14 +147,11 @@ normalize_radios()
 			platform/soc@0/c000000.wifi:5g) uci -q rename wireless.$radio=apc360_tmp_5g ;;
 			platform/soc@0/c000000.wifi+1:2g) uci -q rename wireless.$radio=apc360_tmp_24g ;;
 			*soc@0/20000000.pcie*:*) uci -q rename wireless.$radio=apc360_tmp_service ;;
-			*soc@0/10000000.pcie*:*) uci -q rename wireless.$radio=apc360_tmp_scan ;;
 		esac
 	done
 	uci -q rename wireless.apc360_tmp_5g=radio0
 	uci -q rename wireless.apc360_tmp_24g=radio1
 	uci -q rename wireless.apc360_tmp_service=radio2
-	uci -q delete wireless.apc360_tmp_scan
-	uci -q delete wireless.radio3
 }
 
 reset_ap_ifaces()
