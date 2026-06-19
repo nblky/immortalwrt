@@ -87,7 +87,7 @@ define Device/arista_ap-c260
 	DEVICE_MODEL := AP-C260
 	BLOCKSIZE := 128k
 	PAGESIZE := 2048
-	KERNEL_SIZE := 8192k
+	KERNEL_SIZE := 6144k
 	SOC := ipq8074
 	DEVICE_DTS := ipq8074-ap-c260
 	DEVICE_DTS_CONFIG := config@hk01
@@ -108,7 +108,7 @@ define Device/arista_ap-c360
 	DEVICE_MODEL := AP-C360
 	BLOCKSIZE := 256k
 	PAGESIZE := 4096
-	KERNEL_SIZE := 16384k
+	KERNEL_SIZE := 6144k
 	SOC := ipq8074
 	DEVICE_DTS := ipq8074-ap-c360
 	DEVICE_DTS_CONFIG := config@hk09
