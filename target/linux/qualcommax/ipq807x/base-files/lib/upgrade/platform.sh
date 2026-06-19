@@ -45,6 +45,16 @@ platform_pre_upgrade() {
 }
 
 
+arista_c360_update_ubootenv() {
+	local bootargs='console=ttyMSM0,115200n8 rootwait swiotlb=1 coherent_pool=2M'
+	local bootsys='nand read 0x44000000 0x0 0x1000000; bootm 0x44000000'
+
+	fw_setenv bootargs "$bootargs" || echo 'warning: failed to update bootargs'
+	fw_setenv bootsys "$bootsys" || echo 'warning: failed to update bootsys'
+	fw_setenv bootcmd 'run bootsys' || echo 'warning: failed to update bootcmd'
+}
+
+
 arista_ap_do_upgrade() {
 	local image="$1"
 	local board_dir kernel_mtd kernel_file
@@ -69,6 +79,8 @@ arista_ap_do_upgrade() {
 
 	mtd write "$kernel_file" "/dev/mtd${kernel_mtd}" || nand_do_upgrade_failed
 	rm -f "$kernel_file"
+
+	[ "$(board_name)" = "arista,c360" ] && arista_c360_update_ubootenv
 
 	nand_do_upgrade_success
 }
