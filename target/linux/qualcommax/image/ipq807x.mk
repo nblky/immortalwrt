@@ -93,7 +93,7 @@ define Device/arista_ap-c260
 	DEVICE_DTS_CONFIG := config@hk01
 	SUPPORTED_DEVICES := arista,c260
 	DEVICE_PACKAGES := kmod-phy-aquantia kmod-spi-gpio \
-		kmod-gpio-nxp-74hc164 ipq-wifi-arista_c260 pciutils
+		kmod-gpio-nxp-74hc164 ipq-wifi-arista_c260
 	IMAGES := sysupgrade.bin factory.bin
 	IMAGE/factory.bin := append-ubi
 	ARTIFACTS := kernel.itb
@@ -113,9 +113,9 @@ define Device/arista_ap-c360
 	DEVICE_DTS := ipq8074-ap-c360
 	DEVICE_DTS_CONFIG := config@hk09
 	SUPPORTED_DEVICES := arista,c360
-	DEVICE_PACKAGES := ath11k-firmware-qcn9074-ddwrt kmod-ath11k-pci \
+	DEVICE_PACKAGES := kmod-ath11k-pci \
 		kmod-phy-aquantia kmod-spi-gpio kmod-gpio-nxp-74hc164 \
-		ipq-wifi-arista_c360 pciutils apc360-devmem
+		ipq-wifi-arista_c360 apc360-devmem
 	IMAGES := sysupgrade.bin factory.bin
 	IMAGE/factory.bin := append-ubi
 	ARTIFACTS := kernel.itb

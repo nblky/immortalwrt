@@ -14,14 +14,34 @@ at the firmware default around 19 dBm even when the BDF and regulatory
 data allow the product power level. Keep the workaround scoped to the
 AP-C360 QCN9074 6 GHz BDF variant.
 ---
-diff -urN orig/drivers/net/wireless/ath/ath11k/mac.c new/drivers/net/wireless/ath/ath11k/mac.c
---- a/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 14:58:39.959190993 +0800
-+++ b/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 14:58:39.980190894 +0800
-@@ -1684,6 +1684,41 @@
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -780,6 +780,21 @@
+ 			goto fail;
+ 		ar->txpower_limit_5g = txpower;
+ 	}
++	if (ar->supports_6ghz &&
++	    !strcmp(ar->ab->qmi.target.bdf_ext, "Arista-C360-qcn9074-6g") &&
++	    !(pdev->cap.supported_bands & WMI_HOST_WLAN_5G_CAP) &&
++	    ar->txpower_limit_5g != txpower) {
++		param = WMI_PDEV_PARAM_TXPOWER_LIMIT5G;
++		ret = ath11k_wmi_pdev_set_param(ar, param,
++						txpower, ar->pdev->pdev_id);
++		if (ret)
++			goto fail;
++
++		ar->txpower_limit_5g = txpower;
++		ath11k_info(ar->ab, "set AP-C360 6 GHz txpower limit %d dBm\n",
++			    txpower / 2);
++	}
++
+ 
+ 	return 0;
+ 
+@@ -1684,6 +1700,187 @@
  	ath11k_mac_setup_bcn_tmpl(arvif);
  }
  
-+
 +static void ath11k_mac_arista_c360_disable_6ghz_lpi_limit(struct ath11k_vif *arvif)
 +{
 +	static const char variant[] = "Arista-C360-qcn9074-6g";
@@ -56,75 +76,9 @@ diff -urN orig/drivers/net/wireless/ath/ath11k/mac.c new/drivers/net/wireless/at
 +		    arvif->vdev_id);
 +}
 +
- static void ath11k_control_beaconing(struct ath11k_vif *arvif,
- 				     struct ieee80211_bss_conf *info)
- {
-@@ -1729,6 +1764,8 @@
- 
- 	arvif->is_up = true;
- 
-+	ath11k_mac_arista_c360_disable_6ghz_lpi_limit(arvif);
-+
- 	ath11k_dbg(ar->ab, ATH11K_DBG_MAC, "vdev %d up\n", arvif->vdev_id);
- }
- 
-diff -urN orig/drivers/net/wireless/ath/ath11k/wmi.c new/drivers/net/wireless/ath/ath11k/wmi.c
---- a/drivers/net/wireless/ath/ath11k/wmi.c	2026-05-29 14:58:39.961190984 +0800
-+++ b/drivers/net/wireless/ath/ath11k/wmi.c	2026-05-29 14:58:39.981190889 +0800
-@@ -8928,7 +8928,7 @@
- 	return 0;
- }
- 
--static int
-+int
- ath11k_wmi_send_unit_test_cmd(struct ath11k *ar,
- 			      struct wmi_unit_test_cmd ut_cmd,
- 			      u32 *test_args)
-diff -urN orig/drivers/net/wireless/ath/ath11k/wmi.h new/drivers/net/wireless/ath/ath11k/wmi.h
---- a/drivers/net/wireless/ath/ath11k/wmi.h	2026-05-29 14:58:39.964190970 +0800
-+++ b/drivers/net/wireless/ath/ath11k/wmi.h	2026-05-29 14:58:39.982190884 +0800
-@@ -4113,6 +4113,9 @@
- 	/* Followed by test args*/
- } __packed;
- 
-+int ath11k_wmi_send_unit_test_cmd(struct ath11k *ar,
-+				  struct wmi_unit_test_cmd ut_cmd, u32 *test_args);
-+
- #define MAX_SUPPORTED_RATES 128
- 
- struct beacon_tmpl_params {
-diff -urN orig/drivers/net/wireless/ath/ath11k/mac.c new/drivers/net/wireless/ath/ath11k/mac.c
---- a/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 20:05:00.000000000 +0800
-+++ b/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 20:05:00.000000000 +0800
-@@ -781,6 +781,21 @@
- 		ar->txpower_limit_5g = txpower;
- 	}
- 
-+	if (ar->supports_6ghz &&
-+	    !strcmp(ar->ab->qmi.target.bdf_ext, "Arista-C360-qcn9074-6g") &&
-+	    !(pdev->cap.supported_bands & WMI_HOST_WLAN_5G_CAP) &&
-+	    ar->txpower_limit_5g != txpower) {
-+		param = WMI_PDEV_PARAM_TXPOWER_LIMIT5G;
-+		ret = ath11k_wmi_pdev_set_param(ar, param,
-+						txpower, ar->pdev->pdev_id);
-+		if (ret)
-+			goto fail;
-+
-+		ar->txpower_limit_5g = txpower;
-+		ath11k_info(ar->ab, "set AP-C360 6 GHz txpower limit %d dBm\n",
-+			    txpower / 2);
-+	}
-+
- 	return 0;
- 
- fail:
-diff -urN orig/drivers/net/wireless/ath/ath11k/mac.c new/drivers/net/wireless/ath/ath11k/mac.c
---- a/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 20:40:00.000000000 +0800
-+++ b/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 20:40:00.000000000 +0800
-@@ -1719,6 +1719,83 @@
- 	ath11k_info(ar->ab, "disabled AP-C360 6 GHz LPI chain limit for vdev %d\n",
- 		    arvif->vdev_id);
- }
++static u16 ath11k_mac_get_6ghz_start_frequency(struct cfg80211_chan_def *chan_def);
++static u16 ath11k_mac_get_seg_freq(struct cfg80211_chan_def *chan_def,
++					   u16 start_seq, u8 seq);
 +
 +static bool ath11k_mac_arista_c360_is_6ghz(struct ath11k *ar)
 +{
@@ -202,34 +156,6 @@ diff -urN orig/drivers/net/wireless/ath/ath11k/mac.c new/drivers/net/wireless/at
 +			    "set AP-C360 6 GHz vdev txpower limit %u dBm for vdev %d\n",
 +			    txpower_dbm, arvif->vdev_id);
 +}
- 
- static void ath11k_control_beaconing(struct ath11k_vif *arvif,
- 				     struct ieee80211_bss_conf *info)
-@@ -1765,6 +1841,7 @@
- 	arvif->is_up = true;
- 
- 	ath11k_mac_arista_c360_disable_6ghz_lpi_limit(arvif);
-+	ath11k_mac_arista_c360_apply_6ghz_txpower(arvif);
- 
- 	ath11k_dbg(ar->ab, ATH11K_DBG_MAC, "vdev %d up\n", arvif->vdev_id);
- }
-diff -urN a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
---- a/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 21:05:00.000000000 +0800
-+++ b/drivers/net/wireless/ath/ath11k/mac.c	2026-05-29 21:05:00.000000000 +0800
-@@ -1721,6 +1721,10 @@
- 		    arvif->vdev_id);
- }
- 
-+static u16 ath11k_mac_get_6ghz_start_frequency(struct cfg80211_chan_def *chan_def);
-+static u16 ath11k_mac_get_seg_freq(struct cfg80211_chan_def *chan_def,
-+					   u16 start_seq, u8 seq);
-+
- static bool ath11k_mac_arista_c360_is_6ghz(struct ath11k *ar)
- {
- 	return ar->supports_6ghz &&
-@@ -1762,5 +1766,71 @@
- 			    txpower_dbm, arvif->vdev_id);
- }
 +
 +static void ath11k_mac_arista_c360_apply_6ghz_ap_tpc(struct ath11k_vif *arvif,
 +								     struct cfg80211_chan_def *def)
@@ -296,14 +222,41 @@ diff -urN a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath
 +			    "set AP-C360 6 GHz AP TPC power %d dBm for vdev %d levels %u\n",
 +			    txpower_dbm, arvif->vdev_id, tpc.num_pwr_levels);
 +}
- 
++
  static void ath11k_control_beaconing(struct ath11k_vif *arvif,
  				     struct ieee80211_bss_conf *info)
-@@ -1810,6 +1877,7 @@
+ {
+@@ -1729,6 +1926,10 @@
  
- 	ath11k_mac_arista_c360_disable_6ghz_lpi_limit(arvif);
- 	ath11k_mac_arista_c360_apply_6ghz_txpower(arvif);
+ 	arvif->is_up = true;
+ 
++	ath11k_mac_arista_c360_disable_6ghz_lpi_limit(arvif);
++	ath11k_mac_arista_c360_apply_6ghz_txpower(arvif);
 +	ath11k_mac_arista_c360_apply_6ghz_ap_tpc(arvif, &info->chanreq.oper);
- 
++
  	ath11k_dbg(ar->ab, ATH11K_DBG_MAC, "vdev %d up\n", arvif->vdev_id);
  }
+ 
+--- a/drivers/net/wireless/ath/ath11k/wmi.c
++++ b/drivers/net/wireless/ath/ath11k/wmi.c
+@@ -8930,7 +8930,7 @@
+ 	return 0;
+ }
+ 
+-static int
++int
+ ath11k_wmi_send_unit_test_cmd(struct ath11k *ar,
+ 			      struct wmi_unit_test_cmd ut_cmd,
+ 			      u32 *test_args)
+--- a/drivers/net/wireless/ath/ath11k/wmi.h
++++ b/drivers/net/wireless/ath/ath11k/wmi.h
+@@ -4113,6 +4113,9 @@
+ 	/* Followed by test args*/
+ } __packed;
+ 
++int ath11k_wmi_send_unit_test_cmd(struct ath11k *ar,
++				  struct wmi_unit_test_cmd ut_cmd, u32 *test_args);
++
+ #define MAX_SUPPORTED_RATES 128
+ 
+ struct beacon_tmpl_params {
