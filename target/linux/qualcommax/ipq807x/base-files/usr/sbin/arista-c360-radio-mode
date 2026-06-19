@@ -4,7 +4,6 @@
 
 CONFIG="arista_c360"
 BOARD="arista,c360"
-DEFAULT_WIFI_KEY="a12344321a"
 REG_MODE="0x1009000"
 REG_SUBMODE="0x1009004"
 FW_ROOT="/lib/firmware/ath11k"
@@ -154,62 +153,31 @@ normalize_radios()
 	uci -q rename wireless.apc360_tmp_service=radio2
 }
 
-reset_ap_ifaces()
-{
-	local iface
-	for iface in $(uci -q show wireless | sed -n 's/^wireless\.\([^=]*\)=wifi-iface$/\1/p'); do
-		uci -q delete wireless.$iface
-	done
-}
-
-add_default_ap()
-{
-	local section="$1" device="$2" enc="$3" key="$4"
-	uci -q set wireless.$section=wifi-iface
-	uci -q set wireless.$section.device="$device"
-	uci -q set wireless.$section.network="lan"
-	uci -q set wireless.$section.mode="ap"
-	uci -q set wireless.$section.ssid="ImmortalWRT"
-	uci -q set wireless.$section.encryption="$enc"
-	[ -n "$key" ] && uci -q set wireless.$section.key="$key" || uci -q delete wireless.$section.key
-	uci -q set wireless.$section.disabled="0"
-}
 
 apply_wireless()
 {
 	local mode="$1"
 	normalize_radios
-	reset_ap_ifaces
-
 	uci -q set wireless.radio0=wifi-device
 	uci -q set wireless.radio0.type="mac80211"
 	uci -q set wireless.radio0.path="platform/soc@0/c000000.wifi"
 	uci -q set wireless.radio0.band="5g"
-	uci -q set wireless.radio0.country="US"
 	uci -q set wireless.radio0.channel="36"
 	uci -q set wireless.radio0.htmode="HE80"
-	uci -q set wireless.radio0.txpower="27"
 	uci -q delete wireless.radio0.disabled
 
 	uci -q set wireless.radio1=wifi-device
 	uci -q set wireless.radio1.type="mac80211"
 	uci -q set wireless.radio1.path="platform/soc@0/c000000.wifi+1"
 	uci -q set wireless.radio1.band="2g"
-	uci -q set wireless.radio1.country="US"
 	uci -q set wireless.radio1.channel="1"
 	uci -q set wireless.radio1.htmode="HE20"
-	uci -q set wireless.radio1.txpower="28"
 	uci -q delete wireless.radio1.disabled
 
 	uci -q set wireless.radio2=wifi-device
 	uci -q set wireless.radio2.type="mac80211"
 	uci -q set wireless.radio2.path="soc@0/20000000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0"
-	uci -q set wireless.radio2.country="US"
-	uci -q set wireless.radio2.txpower="28"
 	uci -q delete wireless.radio2.disabled
-
-	add_default_ap default_radio0 radio0 psk-mixed "$DEFAULT_WIFI_KEY"
-	add_default_ap default_radio1 radio1 psk-mixed "$DEFAULT_WIFI_KEY"
 
 	if [ "$mode" = "dual5g" ]; then
 		uci -q set wireless.radio2.band="5g"
@@ -217,22 +185,17 @@ apply_wireless()
 		uci -q set wireless.radio2.htmode="HE80"
 		uci -q delete wireless.radio2.he_6ghz_reg_pwr_type
 		uci -q delete wireless.radio2.stationary_ap
-		add_default_ap default_radio2 radio2 psk-mixed "$DEFAULT_WIFI_KEY"
 	else
 		uci -q set wireless.radio2.band="6g"
 		uci -q set wireless.radio2.channel="5"
 		uci -q set wireless.radio2.htmode="HE160"
 		uci -q set wireless.radio2.he_6ghz_reg_pwr_type="1"
 		uci -q set wireless.radio2.stationary_ap="1"
-		add_default_ap default_radio2 radio2 sae "$DEFAULT_WIFI_KEY"
 	fi
 
 	uci -q reorder wireless.radio0=0
 	uci -q reorder wireless.radio1=1
 	uci -q reorder wireless.radio2=2
-	uci -q reorder wireless.default_radio0=3
-	uci -q reorder wireless.default_radio1=4
-	uci -q reorder wireless.default_radio2=5
 	uci -q commit wireless
 	log "updated wireless config for mode=$mode"
 }
