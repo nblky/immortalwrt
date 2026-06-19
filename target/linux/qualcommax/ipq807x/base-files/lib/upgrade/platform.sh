@@ -45,7 +45,7 @@ platform_pre_upgrade() {
 }
 
 
-arista_c260_do_upgrade() {
+arista_ap_do_upgrade() {
 	local image="$1"
 	local board_dir kernel_mtd kernel_file
 
@@ -59,35 +59,7 @@ arista_c260_do_upgrade() {
 		nand_do_upgrade_failed
 	}
 
-	kernel_file=/tmp/ap-c260-kernel.itb
-	tar xOf "$image" "$board_dir/kernel" > "$kernel_file" || nand_do_upgrade_failed
-	[ -s "$kernel_file" ] || nand_do_upgrade_failed
-
-	CI_UBIPART="rootfs"
-	CI_KERNPART="none"
-	nand_do_flash_file "$image" || nand_do_upgrade_failed
-
-	mtd write "$kernel_file" "/dev/mtd${kernel_mtd}" || nand_do_upgrade_failed
-	rm -f "$kernel_file"
-
-	nand_do_upgrade_success
-}
-
-arista_c360_do_upgrade() {
-	local image="$1"
-	local board_dir kernel_mtd kernel_file
-
-	board_dir="$(tar tf "$image" | grep -m 1 '^sysupgrade-.*/$')"
-	board_dir="${board_dir%/}"
-	[ -n "$board_dir" ] || nand_do_upgrade_failed
-
-	kernel_mtd="$(find_mtd_index '0:HLOS')"
-	[ -n "$kernel_mtd" ] || {
-		echo 'cannot find kernel mtd partition 0:HLOS'
-		nand_do_upgrade_failed
-	}
-
-	kernel_file=/tmp/ap-c360-kernel.itb
+	kernel_file=/tmp/arista-ap-kernel.itb
 	tar xOf "$image" "$board_dir/kernel" > "$kernel_file" || nand_do_upgrade_failed
 	[ -s "$kernel_file" ] || nand_do_upgrade_failed
 
@@ -103,11 +75,9 @@ arista_c360_do_upgrade() {
 
 platform_do_upgrade() {
 	case "$(board_name)" in
-	arista,c260)
-		arista_c260_do_upgrade "$1"
-		;;
+	arista,c260|\
 	arista,c360)
-		arista_c360_do_upgrade "$1"
+		arista_ap_do_upgrade "$1"
 		;;
 	aliyun,ap8220|\
 	zte,mf269-stock)
