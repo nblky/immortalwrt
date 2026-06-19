@@ -33,6 +33,7 @@ ALLWIFIBOARDS:= \
 	aliyun_ap8220 \
 	arcadyan_aw1000 \
 	arista_c360 \
+	arista_c260 \
 	asus_rt-ax89x \
 	buffalo_wxr-5950ax12 \
 	cambiumnetworks_xe34 \
@@ -242,6 +243,7 @@ $(eval $(call generate-ipq-wifi-package,alfa-network_ap120c-ax,ALFA Network AP12
 $(eval $(call generate-ipq-wifi-package,aliyun_ap8220,Aliyun AP8220))
 $(eval $(call generate-ipq-wifi-package,arcadyan_aw1000,Arcadyan AW1000))
 $(eval $(call generate-ipq-wifi-package,arista_c360,Arista AP-C360))
+$(eval $(call generate-ipq-wifi-package,arista_c260,Arista AP-C260))
 define Package/ipq-wifi-arista_c360/install-overlay
 	$(INSTALL_DIR) $(1)/lib/firmware/ath11k/IPQ8074/hw2.0
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/board-arista_c360.ipq8074 \

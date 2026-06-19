@@ -79,6 +79,28 @@ endef
 TARGET_DEVICES += arcadyan_aw1000
 
 
+
+define Device/arista_ap-c260
+	$(call Device/FitImage)
+	$(call Device/UbiFit)
+	DEVICE_VENDOR := Arista
+	DEVICE_MODEL := AP-C260
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	KERNEL_SIZE := 8192k
+	SOC := ipq8074
+	DEVICE_DTS := ipq8074-ap-c260
+	DEVICE_DTS_CONFIG := config@hk01
+	SUPPORTED_DEVICES := arista,c260
+	DEVICE_PACKAGES := kmod-phy-aquantia kmod-spi-gpio \
+		kmod-gpio-nxp-74hc164 ipq-wifi-arista_c260 pciutils
+	IMAGES := sysupgrade.bin factory.bin
+	IMAGE/factory.bin := append-ubi
+	ARTIFACTS := kernel.itb
+	ARTIFACT/kernel.itb := append-kernel | check-size $$$$(KERNEL_SIZE)
+endef
+TARGET_DEVICES += arista_ap-c260
+
 define Device/arista_ap-c360
 	$(call Device/FitImage)
 	$(call Device/UbiFit)

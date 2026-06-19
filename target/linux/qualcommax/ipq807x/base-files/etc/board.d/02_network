@@ -21,6 +21,7 @@ ipq807x_setup_interfaces()
 	zte,mf269-stock)
 		ucidef_set_interfaces_lan_wan "lan" "wan"
 		;;
+	arista,c260|\
 	arista,c360)
 		ucidef_set_interface_lan "eth1 eth2"
 		;;
@@ -98,6 +99,10 @@ ipq807x_setup_macs()
 	local label_mac=""
 
 	case "$board" in
+	arista,c260)
+		label_mac=$(mtd_get_mac_ascii "0:APPSBLENV" eth4addr)
+		lan_mac=$label_mac
+		;;
 	arista,c360)
 		label_mac=$(mtd_get_mac_ascii "0:APPSBLENV" ethaddr)
 		;;
