@@ -154,10 +154,69 @@ normalize_radios()
 }
 
 
+
+set_default_country()
+{
+	local radio="$1" country
+	country="$(uci -q get wireless.$radio.country)"
+	case "$country" in
+		""|00) uci -q set wireless.$radio.country="US" ;;
+	esac
+}
+
+is_c360_radio_path()
+{
+	case "$1" in
+		platform/soc@0/c000000.wifi|\
+		platform/soc@0/c000000.wifi+1|\
+		*soc@0/20000000.pcie*) return 0 ;;
+	esac
+	return 1
+}
+
+cleanup_duplicate_radios()
+{
+	local section device path
+	if uci -q show wireless.default_radio3 >/dev/null; then
+		if uci -q show wireless.default_radio2 >/dev/null; then
+			uci -q delete wireless.default_radio3
+		else
+			uci -q rename wireless.default_radio3=default_radio2
+		fi
+	fi
+
+	for section in $(uci -q show wireless | sed -n 's/^wireless\.\([^=]*\)=wifi-iface$/\1/p'); do
+		device="$(uci -q get wireless.$section.device)"
+		[ "$device" = "radio3" ] && uci -q set wireless.$section.device="radio2"
+	done
+
+	for section in $(uci -q show wireless | sed -n 's/^wireless\.\([^=]*\)=wifi-device$/\1/p'); do
+		case "$section" in
+			radio0|radio1|radio2) continue ;;
+		esac
+		path="$(uci -q get wireless.$section.path)"
+		is_c360_radio_path "$path" || continue
+		uci -q delete wireless.default_$section
+		uci -q delete wireless.$section
+	done
+
+	if ! uci -q show wireless | grep -q "=wifi-iface" || \
+	   ! uci -q show wireless | grep -q "\.device='\?radio2'\?"; then
+		uci -q set wireless.default_radio2=wifi-iface
+		uci -q set wireless.default_radio2.device="radio2"
+		uci -q set wireless.default_radio2.network="lan"
+		uci -q set wireless.default_radio2.mode="ap"
+		uci -q set wireless.default_radio2.ssid="ImmortalWRT"
+		uci -q set wireless.default_radio2.encryption="owe"
+		uci -q set wireless.default_radio2.disabled="0"
+	fi
+}
+
 apply_wireless()
 {
 	local mode="$1"
 	normalize_radios
+	cleanup_duplicate_radios
 	uci -q set wireless.radio0=wifi-device
 	uci -q set wireless.radio0.type="mac80211"
 	uci -q set wireless.radio0.path="platform/soc@0/c000000.wifi"
@@ -192,6 +251,10 @@ apply_wireless()
 		uci -q set wireless.radio2.he_6ghz_reg_pwr_type="1"
 		uci -q set wireless.radio2.stationary_ap="1"
 	fi
+
+	set_default_country radio0
+	set_default_country radio1
+	set_default_country radio2
 
 	uci -q reorder wireless.radio0=0
 	uci -q reorder wireless.radio1=1

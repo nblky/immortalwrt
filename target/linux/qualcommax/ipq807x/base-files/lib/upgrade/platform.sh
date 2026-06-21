@@ -45,13 +45,55 @@ platform_pre_upgrade() {
 }
 
 
-arista_c360_update_ubootenv() {
-	local bootargs='console=ttyMSM0,115200n8 rootwait swiotlb=1 coherent_pool=2M'
-	local bootsys='nand read 0x44000000 0x0 0x1000000; bootm 0x44000000'
+arista_ap_ensure_fw_env_config() {
+	local env_mtd
 
-	fw_setenv bootargs "$bootargs" || echo 'warning: failed to update bootargs'
-	fw_setenv bootsys "$bootsys" || echo 'warning: failed to update bootsys'
-	fw_setenv bootcmd 'run bootsys' || echo 'warning: failed to update bootcmd'
+	[ -s /etc/fw_env.config ] && return 0
+
+	env_mtd="$(find_mtd_index '0:APPSBLENV')"
+	[ -n "$env_mtd" ] || return 1
+
+	echo "/dev/mtd${env_mtd} 0x0 0x10000 0x10000" > /etc/fw_env.config
+}
+
+
+arista_ap_setenv_if_needed() {
+	local name="$1"
+	local wanted="$2"
+	local current
+
+	current="$(fw_printenv -n "$name" 2>/dev/null)"
+	[ "$current" = "$wanted" ] && return 0
+
+	if [ -n "$current" ]; then
+		echo "updating U-Boot env $name: $current -> $wanted"
+	else
+		echo "setting U-Boot env $name: $wanted"
+	fi
+
+	fw_setenv "$name" "$wanted" || echo "warning: failed to update $name"
+}
+
+
+arista_c360_update_ubootenv() {
+	local bootargs='console=ttyMSM0,115200n8 ubi.mtd=rootfs root=mtd:ubi_rootfs'
+	local bootsys='nand read 0x44000000 0x0 0x1000000; bootm'
+	local bootcmd='run bootsys'
+
+	arista_ap_ensure_fw_env_config || {
+		echo 'warning: failed to initialize fw_env.config'
+		return 0
+	}
+
+	fw_printenv >/dev/null || {
+		echo 'warning: U-Boot environment is not readable'
+		return 0
+	}
+
+	# Only touch the boot variables needed to make AP-C260/AP-C360 images boot.
+	arista_ap_setenv_if_needed bootargs "$bootargs"
+	arista_ap_setenv_if_needed bootsys "$bootsys"
+	arista_ap_setenv_if_needed bootcmd "$bootcmd"
 }
 
 

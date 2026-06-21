@@ -1,0 +1,25 @@
+#!/bin/sh
+
+[ "$ACTION" = "add" ] || exit 0
+[ "$(board_name 2>/dev/null)" = "arista,c360" ] || exit 0
+
+needs_cleanup()
+{
+	uci -q show wireless.radio3 >/dev/null && return 0
+	[ "$(uci -q get wireless.radio0.country)" = "" ] && return 0
+	[ "$(uci -q get wireless.radio1.country)" = "" ] && return 0
+	case "$(uci -q get wireless.radio2.country)" in ""|00) return 0 ;; esac
+	[ "$(uci -q get wireless.radio2.channel)" = "" ] && return 0
+	uci -q show wireless | grep -q "\.device='\?radio2'\?" || return 0
+	return 1
+}
+
+[ -d /sys/class/ieee80211/phy2 ] || exit 0
+needs_cleanup || exit 0
+
+(
+	flock -n 9 || exit 0
+	sleep 2
+	/usr/sbin/arista-c360-radio-mode apply-wireless
+	wifi reload >/dev/null 2>&1 || true
+) 9>/var/run/arista-c360-wireless-layout.lock &
