@@ -157,11 +157,10 @@ normalize_radios()
 
 set_default_country()
 {
-	local radio="$1" country
-	country="$(uci -q get wireless.$radio.country)"
-	case "$country" in
-		""|00) uci -q set wireless.$radio.country="US" ;;
-	esac
+	local radio="$1"
+
+	# AP-C360 boarddata/regulatory path is currently validated with US.
+	uci -q set wireless.$radio.country="US"
 }
 
 is_c360_radio_path()
