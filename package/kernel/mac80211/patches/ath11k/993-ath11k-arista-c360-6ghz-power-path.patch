@@ -16,13 +16,12 @@ AP-C360 QCN9074 6 GHz BDF variant.
 ---
 --- a/drivers/net/wireless/ath/ath11k/mac.c
 +++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -780,6 +780,21 @@
+@@ -780,6 +780,20 @@
  			goto fail;
  		ar->txpower_limit_5g = txpower;
  	}
 +	if (ar->supports_6ghz &&
 +	    !strcmp(ar->ab->qmi.target.bdf_ext, "Arista-C360-qcn9074-6g") &&
-+	    !(pdev->cap.supported_bands & WMI_HOST_WLAN_5G_CAP) &&
 +	    ar->txpower_limit_5g != txpower) {
 +		param = WMI_PDEV_PARAM_TXPOWER_LIMIT5G;
 +		ret = ath11k_wmi_pdev_set_param(ar, param,
@@ -38,7 +37,7 @@ AP-C360 QCN9074 6 GHz BDF variant.
  
  	return 0;
  
-@@ -1684,6 +1700,187 @@
+@@ -1684,6 +1700,188 @@
  	ath11k_mac_setup_bcn_tmpl(arvif);
  }
  
@@ -53,7 +52,8 @@ AP-C360 QCN9074 6 GHz BDF variant.
 +	if (arvif->vdev_type != WMI_VDEV_TYPE_AP)
 +		return;
 +
-+	if (strcmp(ar->ab->qmi.target.bdf_ext, variant))
++	if (!ar->supports_6ghz ||
++	    strcmp(ar->ab->qmi.target.bdf_ext, variant))
 +		return;
 +
 +	ath11k_info(ar->ab, "sending AP-C360 6 GHz LPI chain limit disable for vdev %d\n",
@@ -226,13 +226,16 @@ AP-C360 QCN9074 6 GHz BDF variant.
  static void ath11k_control_beaconing(struct ath11k_vif *arvif,
  				     struct ieee80211_bss_conf *info)
  {
-@@ -1729,6 +1926,10 @@
+@@ -1729,6 +1929,13 @@
  
  	arvif->is_up = true;
  
-+	ath11k_mac_arista_c360_disable_6ghz_lpi_limit(arvif);
-+	ath11k_mac_arista_c360_apply_6ghz_txpower(arvif);
-+	ath11k_mac_arista_c360_apply_6ghz_ap_tpc(arvif, &info->chanreq.oper);
++	if (info->chanreq.oper.chan &&
++	    info->chanreq.oper.chan->band == NL80211_BAND_6GHZ) {
++		ath11k_mac_arista_c360_disable_6ghz_lpi_limit(arvif);
++		ath11k_mac_arista_c360_apply_6ghz_txpower(arvif);
++		ath11k_mac_arista_c360_apply_6ghz_ap_tpc(arvif, &info->chanreq.oper);
++	}
 +
  	ath11k_dbg(ar->ab, ATH11K_DBG_MAC, "vdev %d up\n", arvif->vdev_id);
  }
